@@ -425,45 +425,54 @@ export default function AdminDashboard() {
   // Show login screen if not authenticated
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-100 flex items-center justify-center px-4">
-        <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full">
-          <div className="text-center mb-6">
-            <h1 className="text-3xl font-bold text-amber-600 mb-2">Admin Login</h1>
-            <p className="text-gray-600">21st TOPS Antique Awards</p>
+      <div className="min-h-screen bg-gradient-to-br from-amber-500 via-orange-500 to-red-500 flex items-center justify-center px-4">
+        <div className="absolute inset-0 bg-black/10"></div>
+        <div className="relative bg-white rounded-2xl shadow-2xl p-10 max-w-md w-full backdrop-blur-sm border border-white/20 animate-fade-in">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-amber-500 to-orange-600 rounded-full mb-4 shadow-lg">
+              <Users className="w-10 h-10 text-white" />
+            </div>
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent mb-2">Admin Portal</h1>
+            <p className="text-gray-600 font-medium">21st TOPS Antique Awards</p>
+            <div className="h-1 w-20 bg-gradient-to-r from-amber-500 to-orange-500 mx-auto mt-3 rounded-full"></div>
           </div>
           
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleLogin} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Password
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                🔐 Password
               </label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                placeholder="Enter admin password"
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all duration-200 bg-gray-50 hover:bg-white"
+                placeholder="Enter your password"
                 required
               />
             </div>
             
             {loginError && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+              <div className="bg-red-50 border-l-4 border-red-500 text-red-700 px-4 py-3 rounded-lg text-sm flex items-center gap-2 animate-shake">
+                <span className="text-lg">⚠️</span>
                 {loginError}
               </div>
             )}
             
             <button
               type="submit"
-              className="w-full bg-amber-600 text-white py-3 rounded-lg hover:bg-amber-700 transition-colors font-medium"
+              className="w-full bg-gradient-to-r from-amber-600 to-orange-600 text-white py-3.5 rounded-xl hover:from-amber-700 hover:to-orange-700 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98]"
             >
-              Login
+              🚀 Access Dashboard
             </button>
           </form>
           
-          <p className="text-xs text-gray-500 text-center mt-6">
-            Contact administrator if you forgot your password
-          </p>
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <p className="text-xs text-gray-500 text-center flex items-center justify-center gap-1">
+              <span>🔒</span>
+              Secure admin access • Contact support for assistance
+            </p>
+          </div>
         </div>
       </div>
     )
@@ -481,81 +490,94 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-100 py-8 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-amber-50 to-orange-50 py-8 px-4">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3">
-                <Users className="w-8 h-8 text-amber-600" />
-                TOPS Applications Dashboard
-              </h1>
-              <p className="text-gray-600 mt-1">21st Ten Outstanding Pupils and Students - Antique</p>
-            </div>
-            <div className="text-right flex flex-col items-end gap-2">
-              <button
-                onClick={() => {
-                  sessionStorage.removeItem('admin_authenticated')
-                  setIsAuthenticated(false)
-                }}
-                className="text-sm text-red-600 hover:text-red-800 underline"
-              >
-                Logout
-              </button>
+        <div className="bg-gradient-to-r from-amber-500 to-orange-600 rounded-2xl shadow-2xl p-8 mb-8 text-white relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32"></div>
+          <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full -ml-24 -mb-24"></div>
+          
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-6">
               <div>
-                <p className="text-2xl font-bold text-amber-600">{applications.length}</p>
-                <p className="text-sm text-gray-600">Total Applications</p>
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
+                    <Users className="w-8 h-8 text-white" />
+                  </div>
+                  <div>
+                    <h1 className="text-4xl font-bold">TOPS Dashboard</h1>
+                    <p className="text-amber-100 text-sm mt-1">21st Ten Outstanding Pupils & Students - Antique</p>
+                  </div>
+                </div>
+              </div>
+              <div className="text-right flex flex-col items-end gap-3">
+                <button
+                  onClick={() => {
+                    sessionStorage.removeItem('admin_authenticated')
+                    setIsAuthenticated(false)
+                  }}
+                  className="px-4 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-lg transition-all duration-200 text-sm font-medium flex items-center gap-2"
+                >
+                  <span>🚪</span> Logout
+                </button>
+                <div className="bg-white/20 backdrop-blur-sm rounded-xl px-6 py-3">
+                  <p className="text-4xl font-bold">{applications.length}</p>
+                  <p className="text-sm text-amber-100">Total Applications</p>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Download Buttons */}
-          <div className="flex flex-wrap gap-3">
-            <button
-              onClick={downloadCSV}
-              className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
-            >
-              <Download className="w-4 h-4" />
-              Basic CSV
-            </button>
-            <button
-              onClick={downloadExpandedCSV}
-              className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 transition-colors"
-            >
-              <FileText className="w-4 h-4" />
-              All Claims CSV (Excel)
-            </button>
-            <button
-              onClick={downloadJSON}
-              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              <Download className="w-4 h-4" />
-              Download JSON
-            </button>
-            <button
-              onClick={downloadDetailedReport}
-              className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
-            >
-              <FileText className="w-4 h-4" />
-              Detailed JSON Report
-            </button>
-            <button
-              onClick={() => setShowFiles(!showFiles)}
-              className="flex items-center gap-2 bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors"
-            >
-              <FileText className="w-4 h-4" />
-              {showFiles ? 'Hide' : 'View'} Uploaded Files ({uploadedFiles.length})
-            </button>
+            {/* Download Buttons */}
+            <div className="flex flex-wrap gap-3 mt-6">
+              <button
+                onClick={downloadCSV}
+                className="flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white px-5 py-2.5 rounded-xl transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:scale-105"
+              >
+                <Download className="w-4 h-4" />
+                Basic CSV
+              </button>
+              <button
+                onClick={downloadExpandedCSV}
+                className="flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white px-5 py-2.5 rounded-xl transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:scale-105"
+              >
+                <FileText className="w-4 h-4" />
+                All Claims CSV
+              </button>
+              <button
+                onClick={downloadJSON}
+                className="flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white px-5 py-2.5 rounded-xl transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:scale-105"
+              >
+                <Download className="w-4 h-4" />
+                JSON
+              </button>
+              <button
+                onClick={downloadDetailedReport}
+                className="flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white px-5 py-2.5 rounded-xl transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:scale-105"
+              >
+                <FileText className="w-4 h-4" />
+                Detailed Report
+              </button>
+              <button
+                onClick={() => setShowFiles(!showFiles)}
+                className="flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white px-5 py-2.5 rounded-xl transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:scale-105"
+              >
+                <FileText className="w-4 h-4" />
+                {showFiles ? 'Hide' : 'View'} Files ({uploadedFiles.length})
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Filters */}
-        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+        <div className="bg-white rounded-2xl shadow-xl p-6 mb-8 border border-gray-100">
+          <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+            <Search className="w-5 h-5 text-amber-600" />
+            Search & Filter
+          </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                <Search className="w-4 h-4" />
+              <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                <Search className="w-4 h-4 text-amber-600" />
                 Search
               </label>
               <input

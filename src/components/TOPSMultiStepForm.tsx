@@ -172,10 +172,39 @@ export default function TOPSMultiStepForm({ onSuccess }: TOPSMultiStepFormProps)
     }
   }
 
+  const validateCurrentStep = (): boolean => {
+    switch (currentStep) {
+      case 1: // General Information
+        if (!formData.full_name || !formData.complete_address || !formData.municipality || 
+            !formData.phone_number || !formData.email || !formData.birthday || 
+            !formData.age || !formData.sex) {
+          alert('Please fill in all required fields in General Information before proceeding.')
+          return false
+        }
+        break
+      case 2: // School Details
+        if (!formData.school_level || !formData.school_name || !formData.school_address ||
+            !formData.school_head_name || !formData.school_head_email || !formData.school_head_mobile ||
+            !formData.class_advisor_name || !formData.class_advisor_email || !formData.class_advisor_mobile) {
+          alert('Please fill in all required fields in School Details before proceeding.')
+          return false
+        }
+        break
+      case 3: // Requirements
+        if (!formData.nomination_letter_url || !formData.academic_records_url || 
+            !formData.certificate_truthfulness_url || !formData.photo_2x2_url) {
+          alert('Please upload all required documents before proceeding.')
+          return false
+        }
+        break
+    }
+    return true
+  }
+
   const nextStep = () => {
-    if (currentStep < totalSteps) {
+    if (validateCurrentStep() && currentStep < totalSteps) {
       setCurrentStep(currentStep + 1)
-      window.scrollTo(0, 0)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
     }
   }
 

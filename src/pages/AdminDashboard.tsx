@@ -25,11 +25,39 @@ export default function AdminDashboard() {
   const [filterSchoolLevel, setFilterSchoolLevel] = useState('')
   const [showFiles, setShowFiles] = useState(false)
   const [uploadedFiles, setUploadedFiles] = useState<any[]>([])
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [password, setPassword] = useState('')
+  const [loginError, setLoginError] = useState('')
+
+  // Admin password - Change this to your desired password
+  const ADMIN_PASSWORD = 'TOPS2025Admin'
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (password === ADMIN_PASSWORD) {
+      setIsAuthenticated(true)
+      setLoginError('')
+      sessionStorage.setItem('admin_authenticated', 'true')
+    } else {
+      setLoginError('Incorrect password. Please try again.')
+      setPassword('')
+    }
+  }
 
   useEffect(() => {
-    fetchApplications()
-    fetchUploadedFiles()
+    // Check if already authenticated in this session
+    const authenticated = sessionStorage.getItem('admin_authenticated')
+    if (authenticated === 'true') {
+      setIsAuthenticated(true)
+    }
   }, [])
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchApplications()
+      fetchUploadedFiles()
+    }
+  }, [isAuthenticated])
 
   const fetchApplications = async () => {
     try {
@@ -394,6 +422,53 @@ export default function AdminDashboard() {
   const municipalities = [...new Set(applications.map(app => app.municipality))]
   const schoolLevels = [...new Set(applications.map(app => app.school_level))]
 
+  // Show login screen if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-100 flex items-center justify-center px-4">
+        <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full">
+          <div className="text-center mb-6">
+            <h1 className="text-3xl font-bold text-amber-600 mb-2">Admin Login</h1>
+            <p className="text-gray-600">21st TOPS Antique Awards</p>
+          </div>
+          
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Password
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                placeholder="Enter admin password"
+                required
+              />
+            </div>
+            
+            {loginError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                {loginError}
+              </div>
+            )}
+            
+            <button
+              type="submit"
+              className="w-full bg-amber-600 text-white py-3 rounded-lg hover:bg-amber-700 transition-colors font-medium"
+            >
+              Login
+            </button>
+          </form>
+          
+          <p className="text-xs text-gray-500 text-center mt-6">
+            Contact administrator if you forgot your password
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-100 flex items-center justify-center">
@@ -418,9 +493,20 @@ export default function AdminDashboard() {
               </h1>
               <p className="text-gray-600 mt-1">21st Ten Outstanding Pupils and Students - Antique</p>
             </div>
-            <div className="text-right">
-              <p className="text-2xl font-bold text-amber-600">{applications.length}</p>
-              <p className="text-sm text-gray-600">Total Applications</p>
+            <div className="text-right flex flex-col items-end gap-2">
+              <button
+                onClick={() => {
+                  sessionStorage.removeItem('admin_authenticated')
+                  setIsAuthenticated(false)
+                }}
+                className="text-sm text-red-600 hover:text-red-800 underline"
+              >
+                Logout
+              </button>
+              <div>
+                <p className="text-2xl font-bold text-amber-600">{applications.length}</p>
+                <p className="text-sm text-gray-600">Total Applications</p>
+              </div>
             </div>
           </div>
 

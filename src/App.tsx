@@ -1,15 +1,105 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import TOPSMultiStepForm from './components/TOPSMultiStepForm'
 import AdminDashboard from './pages/AdminDashboard'
-import { CheckCircle, Shield } from 'lucide-react'
+import { CheckCircle, Shield, Lock, Key } from 'lucide-react'
 
 function App() {
   const [submitted, setSubmitted] = useState(false)
   const [showAdmin, setShowAdmin] = useState(false)
+  const [isAuthorized, setIsAuthorized] = useState(false)
+  const [accessCode, setAccessCode] = useState('')
+  const [accessError, setAccessError] = useState('')
+
+  // Access code - Change this to your desired code
+  const VALID_ACCESS_CODE = 'TOPS2025'
+
+  const handleAccessSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (accessCode === VALID_ACCESS_CODE) {
+      setIsAuthorized(true)
+      setAccessError('')
+      sessionStorage.setItem('form_authorized', 'true')
+    } else {
+      setAccessError('Invalid access code. Please contact the administrator.')
+      setAccessCode('')
+    }
+  }
+
+  useEffect(() => {
+    // Check if already authorized in this session
+    const authorized = sessionStorage.getItem('form_authorized')
+    if (authorized === 'true') {
+      setIsAuthorized(true)
+    }
+  }, [])
 
   // Check if URL has /admin
   if (window.location.pathname === '/admin' || showAdmin) {
     return <AdminDashboard />
+  }
+
+  // Show access code screen if not authorized
+  if (!isAuthorized) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-amber-500 via-orange-500 to-red-500 flex items-center justify-center px-4">
+        <div className="absolute inset-0 bg-black/10"></div>
+        <div className="relative bg-white rounded-2xl shadow-2xl p-10 max-w-lg w-full backdrop-blur-sm border border-white/20 animate-fade-in">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-amber-500 to-orange-600 rounded-full mb-4 shadow-lg">
+              <Lock className="w-10 h-10 text-white" />
+            </div>
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent mb-2">Access Required</h1>
+            <p className="text-gray-600 font-medium">21st TOPS Antique Awards</p>
+            <div className="h-1 w-20 bg-gradient-to-r from-amber-500 to-orange-500 mx-auto mt-3 rounded-full"></div>
+          </div>
+          
+          <div className="bg-amber-50 border-l-4 border-amber-500 p-4 mb-6 rounded-r-lg">
+            <p className="text-sm text-amber-800">
+              <strong>📋 For Authorized Applicants Only</strong><br/>
+              Please enter the access code provided by your school or the TOPS committee.
+            </p>
+          </div>
+          
+          <form onSubmit={handleAccessSubmit} className="space-y-5">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                <Key className="w-4 h-4 text-amber-600" />
+                Access Code
+              </label>
+              <input
+                type="text"
+                value={accessCode}
+                onChange={(e) => setAccessCode(e.target.value.toUpperCase())}
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all duration-200 bg-gray-50 hover:bg-white text-center text-lg font-semibold tracking-wider"
+                placeholder="ENTER CODE"
+                required
+              />
+            </div>
+            
+            {accessError && (
+              <div className="bg-red-50 border-l-4 border-red-500 text-red-700 px-4 py-3 rounded-lg text-sm flex items-center gap-2 animate-shake">
+                <span className="text-lg">⚠️</span>
+                {accessError}
+              </div>
+            )}
+            
+            <button
+              type="submit"
+              className="w-full bg-gradient-to-r from-amber-600 to-orange-600 text-white py-3.5 rounded-xl hover:from-amber-700 hover:to-orange-700 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98]"
+            >
+              🚀 Access Application Form
+            </button>
+          </form>
+          
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <p className="text-xs text-gray-500 text-center flex items-center justify-center gap-1">
+              <span>🔒</span>
+              Don't have an access code? Contact your school coordinator
+            </p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (

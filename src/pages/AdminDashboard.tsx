@@ -23,7 +23,6 @@ export default function AdminDashboard() {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterMunicipality, setFilterMunicipality] = useState('')
   const [filterSchoolLevel, setFilterSchoolLevel] = useState('')
-  const [selectedApp, setSelectedApp] = useState<Application | null>(null)
   const [showFiles, setShowFiles] = useState(false)
   const [uploadedFiles, setUploadedFiles] = useState<any[]>([])
 

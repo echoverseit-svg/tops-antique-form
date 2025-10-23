@@ -26,6 +26,15 @@ function App() {
   }
 
   useEffect(() => {
+    // Check for reset parameter in URL
+    const urlParams = new URLSearchParams(window.location.search)
+    if (urlParams.get('reset') === 'true') {
+      sessionStorage.removeItem('form_authorized')
+      sessionStorage.removeItem('admin_authenticated')
+      window.history.replaceState({}, '', window.location.pathname)
+      return
+    }
+    
     // Check if already authorized in this session
     const authorized = sessionStorage.getItem('form_authorized')
     if (authorized === 'true') {

@@ -308,7 +308,18 @@ export default function TOPSMultiStepForm({ onSuccess }: TOPSMultiStepFormProps)
       </div>
 
       {/* Form Content */}
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={(e) => {
+        e.preventDefault()
+        if (currentStep < totalSteps) {
+          // Validate and move to next step
+          if (validateCurrentStep()) {
+            nextStep()
+          }
+        } else {
+          // Final submit
+          handleSubmit(e)
+        }
+      }}>
         <div className="bg-white rounded-lg shadow-xl p-8 mb-6">
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
@@ -337,8 +348,7 @@ export default function TOPSMultiStepForm({ onSuccess }: TOPSMultiStepFormProps)
 
           {currentStep < totalSteps ? (
             <button
-              type="button"
-              onClick={nextStep}
+              type="submit"
               className="flex items-center gap-2 px-6 py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors"
             >
               Next

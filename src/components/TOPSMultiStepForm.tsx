@@ -196,7 +196,6 @@ export default function TOPSMultiStepForm({ onSuccess }: TOPSMultiStepFormProps)
         return (
           <RequirementsSection
             formData={formData}
-            setFormData={setFormData}
             onFileUpload={handleFileUpload}
             uploadingFile={uploadingFile}
           />

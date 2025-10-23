@@ -3,14 +3,12 @@ import { TOPSFormData } from '../../types'
 
 interface RequirementsSectionProps {
   formData: TOPSFormData
-  setFormData: (data: TOPSFormData) => void
   onFileUpload: (file: File, fieldName: string) => Promise<void>
   uploadingFile: boolean
 }
 
 export default function RequirementsSection({ 
   formData, 
-  setFormData, 
   onFileUpload, 
   uploadingFile 
 }: RequirementsSectionProps) {

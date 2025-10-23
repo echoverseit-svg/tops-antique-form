@@ -1,6 +1,6 @@
 import { useState, FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
-import { FormData } from '../types'
+import { TOPSFormData } from '../types'
 import { Loader2, Send, FileText, User, Mail, Phone, MapPin, Calendar, Package } from 'lucide-react'
 
 interface ApplicationFormProps {
@@ -10,7 +10,7 @@ interface ApplicationFormProps {
 export default function ApplicationForm({ onSuccess }: ApplicationFormProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [formData, setFormData] = useState<FormData>({
+  const [formData, setFormData] = useState<TOPSFormData>({
     full_name: '',
     email: '',
     phone: '',
@@ -19,11 +19,11 @@ export default function ApplicationForm({ onSuccess }: ApplicationFormProps) {
     estimated_age: '',
     condition: '',
     provenance: ''
-  })
+  } as any)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
-    setFormData(prev => ({
+    setFormData((prev: any) => ({
       ...prev,
       [name]: value
     }))

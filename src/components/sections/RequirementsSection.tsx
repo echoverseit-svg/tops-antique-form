@@ -31,6 +31,7 @@ export default function RequirementsSection({
           </label>
           <input
             type="file"
+            required={!formData.nomination_letter_url}
             accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
             onChange={async (e) => {
               const file = e.target.files?.[0]
@@ -49,6 +50,7 @@ export default function RequirementsSection({
           </label>
           <input
             type="file"
+            required={!formData.academic_records_url}
             accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
             onChange={async (e) => {
               const file = e.target.files?.[0]
@@ -67,6 +69,7 @@ export default function RequirementsSection({
           </label>
           <input
             type="file"
+            required={!formData.certificate_truthfulness_url}
             accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
             onChange={async (e) => {
               const file = e.target.files?.[0]
@@ -85,6 +88,7 @@ export default function RequirementsSection({
           </label>
           <input
             type="file"
+            required={!formData.photo_2x2_url}
             accept=".jpg,.jpeg,.png"
             onChange={async (e) => {
               const file = e.target.files?.[0]

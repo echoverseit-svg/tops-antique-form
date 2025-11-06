@@ -9,6 +9,7 @@ import AcademicProfileSection from './sections/AcademicProfileSection'
 import LeadershipProfileSection from './sections/LeadershipProfileSection'
 import CommunityServiceSection from './sections/CommunityServiceSection'
 import DataPrivacySection from './sections/DataPrivacySection'
+import { AutofillButton } from './AutofillButton'
 
 interface TOPSMultiStepFormProps {
   // onSuccess receives the public token generated for the applicant so the
@@ -338,6 +339,10 @@ export default function TOPSMultiStepForm({ onSuccess }: TOPSMultiStepFormProps)
               {error}
             </div>
           )}
+
+          <div className="mb-6">
+            <AutofillButton onFill={(data) => setFormData({ ...formData, ...data })} />
+          </div>
 
           {renderStepContent()}
         </div>

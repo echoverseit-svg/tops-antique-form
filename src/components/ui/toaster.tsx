@@ -1,10 +1,6 @@
 import { Toast, ToastProvider, ToastViewport } from "@/components/ui/toast"
 import { useToast } from "@/components/ui/use-toast"
 
-interface ToastProviderProps {
-  children: React.ReactNode
-}
-
 export function Toaster() {
   const { toasts } = useToast()
 

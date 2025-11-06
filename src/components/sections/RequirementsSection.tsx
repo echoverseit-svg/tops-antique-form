@@ -3,15 +3,36 @@ import { TOPSFormData } from '../../types'
 
 interface RequirementsSectionProps {
   formData: TOPSFormData
+  setFormData: (data: TOPSFormData) => void
   onFileUpload: (file: File, fieldName: string) => Promise<void>
   uploadingFile: boolean
 }
 
 export default function RequirementsSection({ 
   formData, 
+  setFormData,
   onFileUpload, 
   uploadingFile 
 }: RequirementsSectionProps) {
+
+  const isImageUrl = (url?: string) => {
+    if (!url) return false
+    return /\.(jpg|jpeg|png|gif|webp)$/i.test(url)
+  }
+
+  const filenameFromUrl = (url?: string) => {
+    if (!url) return ''
+    try {
+      const parts = url.split('/')
+      return decodeURIComponent(parts[parts.length - 1].split('?')[0])
+    } catch {
+      return url
+    }
+  }
+
+  const removeFile = (fieldName: keyof TOPSFormData) => {
+    setFormData({ ...formData, [fieldName]: undefined } as unknown as TOPSFormData)
+  }
   return (
     <div className="space-y-6">
       <div className="border-b pb-4">
@@ -37,8 +58,22 @@ export default function RequirementsSection({
             }}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
           />
+
           {formData.nomination_letter_url && (
-            <p className="text-xs text-green-600 mt-1">✓ File uploaded</p>
+            <div className="mt-3 flex items-start gap-3">
+              {isImageUrl(formData.nomination_letter_url) ? (
+                <img src={formData.nomination_letter_url} alt="nomination" className="w-28 h-20 object-cover rounded-md border" />
+              ) : (
+                <div className="w-28 h-20 flex items-center justify-center rounded-md border bg-gray-50 text-xs text-gray-600">Document</div>
+              )}
+              <div className="flex-1">
+                <div className="text-sm font-medium text-gray-800">{filenameFromUrl(formData.nomination_letter_url)}</div>
+                <div className="flex items-center gap-3 mt-2">
+                  <a href={formData.nomination_letter_url} target="_blank" rel="noreferrer" className="text-xs text-amber-600">View</a>
+                  <button type="button" onClick={() => removeFile('nomination_letter_url' as keyof TOPSFormData)} className="text-xs text-red-600">Remove</button>
+                </div>
+              </div>
+            </div>
           )}
         </div>
 
@@ -56,8 +91,22 @@ export default function RequirementsSection({
             }}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
           />
+
           {formData.academic_records_url && (
-            <p className="text-xs text-green-600 mt-1">✓ File uploaded</p>
+            <div className="mt-3 flex items-start gap-3">
+              {isImageUrl(formData.academic_records_url) ? (
+                <img src={formData.academic_records_url} alt="academic" className="w-28 h-20 object-cover rounded-md border" />
+              ) : (
+                <div className="w-28 h-20 flex items-center justify-center rounded-md border bg-gray-50 text-xs text-gray-600">Document</div>
+              )}
+              <div className="flex-1">
+                <div className="text-sm font-medium text-gray-800">{filenameFromUrl(formData.academic_records_url)}</div>
+                <div className="flex items-center gap-3 mt-2">
+                  <a href={formData.academic_records_url} target="_blank" rel="noreferrer" className="text-xs text-amber-600">View</a>
+                  <button type="button" onClick={() => removeFile('academic_records_url' as keyof TOPSFormData)} className="text-xs text-red-600">Remove</button>
+                </div>
+              </div>
+            </div>
           )}
         </div>
 
@@ -75,8 +124,22 @@ export default function RequirementsSection({
             }}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
           />
+
           {formData.certificate_truthfulness_url && (
-            <p className="text-xs text-green-600 mt-1">✓ File uploaded</p>
+            <div className="mt-3 flex items-start gap-3">
+              {isImageUrl(formData.certificate_truthfulness_url) ? (
+                <img src={formData.certificate_truthfulness_url} alt="truthfulness" className="w-28 h-20 object-cover rounded-md border" />
+              ) : (
+                <div className="w-28 h-20 flex items-center justify-center rounded-md border bg-gray-50 text-xs text-gray-600">Document</div>
+              )}
+              <div className="flex-1">
+                <div className="text-sm font-medium text-gray-800">{filenameFromUrl(formData.certificate_truthfulness_url)}</div>
+                <div className="flex items-center gap-3 mt-2">
+                  <a href={formData.certificate_truthfulness_url} target="_blank" rel="noreferrer" className="text-xs text-amber-600">View</a>
+                  <button type="button" onClick={() => removeFile('certificate_truthfulness_url' as keyof TOPSFormData)} className="text-xs text-red-600">Remove</button>
+                </div>
+              </div>
+            </div>
           )}
         </div>
 
@@ -94,8 +157,22 @@ export default function RequirementsSection({
             }}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
           />
+
           {formData.photo_2x2_url && (
-            <p className="text-xs text-green-600 mt-1">✓ File uploaded</p>
+            <div className="mt-3 flex items-start gap-3">
+              {isImageUrl(formData.photo_2x2_url) ? (
+                <img src={formData.photo_2x2_url} alt="2x2" className="w-28 h-28 object-cover rounded-md border" />
+              ) : (
+                <div className="w-28 h-28 flex items-center justify-center rounded-md border bg-gray-50 text-xs text-gray-600">Preview not available</div>
+              )}
+              <div className="flex-1">
+                <div className="text-sm font-medium text-gray-800">{filenameFromUrl(formData.photo_2x2_url)}</div>
+                <div className="flex items-center gap-3 mt-2">
+                  <a href={formData.photo_2x2_url} target="_blank" rel="noreferrer" className="text-xs text-amber-600">View</a>
+                  <button type="button" onClick={() => removeFile('photo_2x2_url' as keyof TOPSFormData)} className="text-xs text-red-600">Remove</button>
+                </div>
+              </div>
+            </div>
           )}
         </div>
 

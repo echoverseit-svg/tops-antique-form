@@ -77,29 +77,29 @@ export const SCHOOL_LEVELS = [
 export const SEX_OPTIONS = ['Male', 'Female']
 
 export const ACADEMIC_PARTICIPATION_TYPES = [
-  'Champion',
+  'Contestant',
   'Participant',
   'N/A'
 ]
 
 export const ACADEMIC_RANKS = [
-  '1st PLACE/RECIPIENT',
-  '2nd PLACE/RECIPIENT',
-  '3rd PLACE/RECIPIENT',
-  'OTHER',
-  'More...'
+  '1st or its equivalent',
+  '2nd or its equivalent',
+  '3rd or its equivalent',
+  'Other ranks',
+  'None'
 ]
 
 export const ACADEMIC_LEVELS = [
-  'MUNICIPAL',
-  'SCHOOL',
-  'DISTRICT',
-  'DIVISION',
-  'CLUSTER',
-  'PROVINCIAL',
-  'REGIONAL',
-  'NATIONAL',
-  'INTERNATIONAL',
+  'Homeroom',
+  'Grade',
+  'School',
+  'District',
+  'Cluster',
+  'Division/Provincial',
+  'Regional',
+  'National',
+  'International',
   'N/A'
 ]
 
@@ -139,9 +139,10 @@ export const LEADERSHIP_LEVELS = [
 ]
 
 export const MODALITY_OPTIONS = [
-  'Face-to-face',
+  'Face-to-Face',
   'Online',
-  'Hybrid'
+  'Hybrid',
+  'N/A'
 ]
 
 export const COMMUNITY_PARTICIPATION_TYPES = [
@@ -154,14 +155,14 @@ export const COMMUNITY_PARTICIPATION_TYPES = [
 ]
 
 export const COMMUNITY_RANKS = [
-  'President/Major/Chairperson',
+  'President/Mayor/Chairperson',
   'Vice President/Vice Mayor/Vice Chairperson',
-  'Learning Participant',
-  '1st PLACE/RECIPIENT',
-  '2nd PLACE/RECIPIENT',
-  '3rd PLACE/RECIPIENT',
-  'Other school positions',
-  'More...'
+  'Member/Participant',
+  '1st or its equivalent',
+  '2nd or its equivalent',
+  '3rd or its equivalent',
+  'Other ranks/positions',
+  'None'
 ]
 
 export const COMMUNITY_LEVELS = [

@@ -11,7 +11,9 @@ import CommunityServiceSection from './sections/CommunityServiceSection'
 import DataPrivacySection from './sections/DataPrivacySection'
 
 interface TOPSMultiStepFormProps {
-  onSuccess: () => void
+  // onSuccess receives the public token generated for the applicant so the
+  // parent can show a "View Status" button or save it for later.
+  onSuccess: (publicToken?: string) => void
 }
 
 export default function TOPSMultiStepForm({ onSuccess }: TOPSMultiStepFormProps) {
@@ -142,27 +144,36 @@ export default function TOPSMultiStepForm({ onSuccess }: TOPSMultiStepFormProps)
     setError(null)
 
     try {
+      // generate a public token so the applicant can check status later
+      const publicToken = (typeof crypto !== 'undefined' && (crypto as any).randomUUID)
+        ? (crypto as any).randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+
       const { error: insertError } = await supabase
         .from('tops_applications')
         .insert([{
           ...formData,
           academic_claims: JSON.stringify(formData.academic_claims),
           leadership_claims: JSON.stringify(formData.leadership_claims),
-          community_service_claims: JSON.stringify(formData.community_service_claims)
+          community_service_claims: JSON.stringify(formData.community_service_claims),
+          public_status_token: publicToken
         }])
 
       if (insertError) throw insertError
 
-      // Success alert
+      // Success alert with status-check link
+      const statusUrl = `${window.location.origin}/status?token=${publicToken}`
       alert(
         '✅ APPLICATION SUBMITTED SUCCESSFULLY!\n\n' +
         'Thank you for submitting your application for the 21st TOPS Antique Awards.\n\n' +
-        'We have received your application and will review it carefully.\n\n' +
-        'You will be contacted via email or phone regarding the status of your application.\n\n' +
+        'You can check your application status at the link below:\n' +
+        `${statusUrl}\n\n` +
+        'Please save this link or the token. Anyone with this link can view your public status.\n\n' +
         'Good luck!'
       )
 
-      onSuccess()
+      // Let parent know and pass the token so it can show a dedicated View Status button
+      onSuccess(publicToken)
     } catch (err) {
       console.error('Error submitting form:', err)
       setError(err instanceof Error ? err.message : 'An error occurred while submitting the form')
@@ -225,6 +236,7 @@ export default function TOPSMultiStepForm({ onSuccess }: TOPSMultiStepFormProps)
         return (
           <RequirementsSection
             formData={formData}
+            setFormData={setFormData}
             onFileUpload={handleFileUpload}
             uploadingFile={uploadingFile}
           />

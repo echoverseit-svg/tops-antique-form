@@ -1,13 +1,17 @@
 import { useState, useEffect } from 'react'
 import TOPSMultiStepForm from './components/TOPSMultiStepForm'
 import AdminDashboard from './pages/AdminDashboard'
-import { CheckCircle, Shield, Lock, Key } from 'lucide-react'
+import StatusPage from './pages/StatusPage'
+import { CheckCircle, Shield, Lock, Key, Search } from 'lucide-react'
 
 function App() {
   const [submitted, setSubmitted] = useState(false)
   const [showAdmin, setShowAdmin] = useState(false)
+  const [lastToken, setLastToken] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
   const [isAuthorized, setIsAuthorized] = useState(false)
   const [accessCode, setAccessCode] = useState('')
+    const [showCode, setShowCode] = useState(false)
   const [accessError, setAccessError] = useState('')
 
   // Access code - Change this to your desired code
@@ -47,6 +51,11 @@ function App() {
     return <AdminDashboard />
   }
 
+  // If visiting /status show the public status page
+  if (window.location.pathname === '/status') {
+    return <StatusPage />
+  }
+
   // Show access code screen if not authorized
   if (!isAuthorized) {
     return (
@@ -75,14 +84,33 @@ function App() {
                 <Key className="w-4 h-4 text-amber-600" />
                 Access Code
               </label>
-              <input
-                type="text"
-                value={accessCode}
-                onChange={(e) => setAccessCode(e.target.value.toUpperCase())}
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all duration-200 bg-gray-50 hover:bg-white text-center text-lg font-semibold tracking-wider"
-                placeholder="ENTER CODE"
-                required
-              />
+                  <div className="relative">
+                    <input
+                      type={showCode ? "text" : "password"}
+                      value={accessCode}
+                      onChange={(e) => setAccessCode(e.target.value.toUpperCase())}
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all duration-200 bg-gray-50 hover:bg-white text-center text-lg font-semibold tracking-wider"
+                      placeholder="ENTER CODE"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowCode(!showCode)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-amber-600 transition-colors"
+                    >
+                      {showCode ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                          <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                          <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                        </svg>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-1.473-1.473A10.014 10.014 0 0019.542 10C18.268 5.943 14.478 3 10 3a9.958 9.958 0 00-4.512 1.074l-1.78-1.781zm4.261 4.26l1.514 1.515a2.003 2.003 0 012.45 2.45l1.514 1.514a4 4 0 00-5.478-5.478z" clipRule="evenodd" />
+                          <path d="M12.454 16.697L9.75 13.992a4 4 0 01-3.742-3.741L2.335 6.578A9.98 9.98 0 00.458 10c1.274 4.057 5.065 7 9.542 7 .847 0 1.669-.105 2.454-.303z" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
             </div>
             
             {accessError && (
@@ -152,14 +180,24 @@ function App() {
               </div>
             </div>
             
-            {/* Admin Access Button */}
-            <button
-              onClick={() => setShowAdmin(true)}
-              className="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm px-5 py-2.5 rounded-xl transition-all duration-200 font-medium border border-white/30 text-sm"
-            >
-              <Shield className="w-4 h-4" />
-              Admin Dashboard
-            </button>
+            {/* Admin Access & Status Buttons */}
+            <div className="flex items-center gap-3 justify-center">
+              <button
+                onClick={() => setShowAdmin(true)}
+                className="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm px-5 py-2.5 rounded-xl transition-all duration-200 font-medium border border-white/30 text-sm"
+              >
+                <Shield className="w-4 h-4" />
+                Admin Dashboard
+              </button>
+
+              <a
+                href="/status"
+                className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 backdrop-blur-sm px-5 py-2.5 rounded-xl transition-all duration-200 font-medium border border-white/20 text-sm text-white/90"
+              >
+                <Search className="w-4 h-4" />
+                View Status
+              </a>
+            </div>
           </div>
         </div>
       </div>
@@ -187,15 +225,72 @@ function App() {
                 • Wait for our review team to contact you
               </p>
             </div>
-            <button
-              onClick={() => setSubmitted(false)}
-              className="bg-gradient-to-r from-amber-600 to-orange-600 text-white px-8 py-3.5 rounded-xl hover:from-amber-700 hover:to-orange-700 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl transform hover:scale-105"
-            >
-              Submit Another Application
-            </button>
+            <div className="flex flex-col items-center gap-4">
+              {lastToken && (
+                <div className="w-full max-w-md bg-gray-50 border border-gray-100 rounded-lg p-4 text-left">
+                  <label className="text-sm font-medium text-gray-700">Your status token</label>
+                  <div className="mt-2 flex gap-2">
+                    <input
+                      readOnly
+                      value={lastToken}
+                      className="flex-1 px-3 py-2 border border-gray-200 rounded-md bg-white text-sm font-mono"
+                    />
+                    <button
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(lastToken)
+                          setCopied(true)
+                          setTimeout(() => setCopied(false), 2000)
+                        } catch (err) {
+                          // fallback
+                          const el = document.createElement('textarea')
+                          el.value = lastToken
+                          document.body.appendChild(el)
+                          el.select()
+                          document.execCommand('copy')
+                          document.body.removeChild(el)
+                          setCopied(true)
+                          setTimeout(() => setCopied(false), 2000)
+                        }
+                      }}
+                      className="px-4 py-2 bg-amber-600 text-white rounded-md text-sm"
+                    >
+                      {copied ? 'Copied' : 'Copy'}
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">Save this token or the link to check your application status later. Anyone with this token can view the public status.</p>
+                </div>
+              )}
+
+              <div className="flex items-center gap-4">
+                {lastToken && (
+                  <a
+                    href={`/status?token=${encodeURIComponent(lastToken)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-white text-amber-600 px-6 py-3 rounded-xl font-semibold border border-amber-600 hover:bg-amber-50"
+                  >
+                    🔎 View Status
+                  </a>
+                )}
+
+                <button
+                  onClick={() => {
+                    setSubmitted(false)
+                    setLastToken(null)
+                  }}
+                  className="bg-gradient-to-r from-amber-600 to-orange-600 text-white px-8 py-3.5 rounded-xl hover:from-amber-700 hover:to-orange-700 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl transform hover:scale-105"
+                >
+                  Submit Another Application
+                </button>
+              </div>
+            </div>
           </div>
         ) : (
-          <TOPSMultiStepForm onSuccess={() => setSubmitted(true)} />
+          <TOPSMultiStepForm onSuccess={(token) => {
+            setSubmitted(true)
+            if (token) setLastToken(token)
+          }} />
         )}
       </div>
     </div>

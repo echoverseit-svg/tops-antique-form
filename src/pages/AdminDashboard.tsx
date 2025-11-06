@@ -1,21 +1,8 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { Download, FileText, Users, Calendar, Search, Filter } from 'lucide-react'
-
-interface Application {
-  id: string
-  full_name: string
-  email: string
-  phone_number: string
-  municipality: string
-  school_name: string
-  school_level: string
-  academic_claims: any[]
-  leadership_claims: any[]
-  community_service_claims: any[]
-  created_at: string
-  [key: string]: any
-}
+import { Download, FileText, Users, Calendar, Search, Filter, MessageCircle, CheckCircle, AlertCircle, Loader2, Clock } from 'lucide-react'
+import { Application, ApplicationStatus, APPLICATION_STATUS_LABELS } from '../types/admin'
+import ApplicationDetails from '../components/ApplicationDetails'
 
 export default function AdminDashboard() {
   const [applications, setApplications] = useState<Application[]>([])
@@ -28,6 +15,8 @@ export default function AdminDashboard() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [password, setPassword] = useState('')
   const [loginError, setLoginError] = useState('')
+  const [showAdminPassword, setShowAdminPassword] = useState(false)
+  const [selectedApplication, setSelectedApplication] = useState<Application | null>(null)
 
   // Admin password - Change this to your desired password
   const ADMIN_PASSWORD = 'TOPS2025Admin'
@@ -442,14 +431,34 @@ export default function AdminDashboard() {
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 🔐 Password
               </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all duration-200 bg-gray-50 hover:bg-white"
-                placeholder="Enter your password"
-                required
-              />
+              <div className="relative">
+                <input
+                  type={showAdminPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all duration-200 bg-gray-50 hover:bg-white"
+                  placeholder="Enter your password"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowAdminPassword(!showAdminPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-amber-600 transition-colors"
+                  aria-label={showAdminPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showAdminPassword ? (
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                      <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                      <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                    </svg>
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-1.473-1.473A10.014 10.014 0 0019.542 10C18.268 5.943 14.478 3 10 3a9.958 9.958 0 00-4.512 1.074l-1.78-1.781zm4.261 4.26l1.514 1.515a2.003 2.003 0 012.45 2.45l1.514 1.514a4 4 0 00-5.478-5.478z" clipRule="evenodd" />
+                      <path d="M12.454 16.697L9.75 13.992a4 4 0 01-3.742-3.741L2.335 6.578A9.98 9.98 0 00.458 10c1.274 4.057 5.065 7 9.542 7 .847 0 1.669-.105 2.454-.303z" />
+                    </svg>
+                  )}
+                </button>
+              </div>
             </div>
             
             {loginError && (
@@ -701,6 +710,46 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        {/* Application Details Modal */}
+        {selectedApplication && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-2xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
+              <div className="p-6 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-2xl font-bold text-gray-900">Application Review</h2>
+                  <button
+                    onClick={() => setSelectedApplication(null)}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="mt-2">
+                  <p className="text-sm text-gray-600">
+                    Reviewing application for <span className="font-semibold">{selectedApplication.full_name}</span>
+                  </p>
+                </div>
+              </div>
+              <div className="p-6">
+                <ApplicationDetails
+                  application={selectedApplication}
+                  onStatusChange={(newStatus) => {
+                    setApplications(apps =>
+                      apps.map(app =>
+                        app.id === selectedApplication.id
+                          ? { ...app, status: newStatus }
+                          : app
+                      )
+                    )
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Applications Table */}
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
           <div className="overflow-x-auto">
@@ -712,6 +761,7 @@ export default function AdminDashboard() {
                   <th className="px-4 py-3 text-left">Municipality</th>
                   <th className="px-4 py-3 text-left">School</th>
                   <th className="px-4 py-3 text-center">Claims</th>
+                  <th className="px-4 py-3 text-center">Status</th>
                   <th className="px-4 py-3 text-left">Submitted</th>
                   <th className="px-4 py-3 text-center">Actions</th>
                 </tr>
@@ -757,6 +807,22 @@ export default function AdminDashboard() {
                         </span>
                       </div>
                     </td>
+                    <td className="px-4 py-3">
+                      <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium 
+                        ${app.status === 'approved' ? 'bg-green-100 text-green-800' :
+                          app.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                          app.status === 'under_review' ? 'bg-blue-100 text-blue-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}
+                      >
+                        {app.status === 'approved' ? <CheckCircle className="w-4 h-4" /> :
+                         app.status === 'rejected' ? <AlertCircle className="w-4 h-4" /> :
+                         app.status === 'under_review' ? <Loader2 className="w-4 h-4" /> :
+                         <Clock className="w-4 h-4" />
+                        }
+                        {APPLICATION_STATUS_LABELS[app.status as ApplicationStatus]}
+                      </div>
+                    </td>
                     <td className="px-4 py-3 text-sm text-gray-600">
                       <div className="flex items-center gap-1">
                         <Calendar className="w-4 h-4" />
@@ -766,7 +832,14 @@ export default function AdminDashboard() {
                         {new Date(app.created_at).toLocaleTimeString()}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-4 py-3 text-center space-x-2">
+                      <button
+                        onClick={() => setSelectedApplication(app)}
+                        className="bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700 transition-colors text-sm font-medium inline-flex items-center gap-1"
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                        Review
+                      </button>
                       <button
                         onClick={() => {
                           // Create individual CSV for this applicant

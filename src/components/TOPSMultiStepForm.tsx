@@ -150,17 +150,28 @@ export default function TOPSMultiStepForm({ onSuccess }: TOPSMultiStepFormProps)
         ? (crypto as any).randomUUID()
         : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
 
-      const { error: insertError } = await supabase
-        .from('tops_applications')
-        .insert([{
-          ...formData,
-          academic_claims: JSON.stringify(formData.academic_claims),
-          leadership_claims: JSON.stringify(formData.leadership_claims),
-          community_service_claims: JSON.stringify(formData.community_service_claims),
-          public_status_token: publicToken
-        }])
+      // Ensure JSON/JSONB columns are passed as native arrays/objects (not stringified)
+      const payload = {
+        ...formData,
+        academic_claims: formData.academic_claims,
+        leadership_claims: formData.leadership_claims,
+        community_service_claims: formData.community_service_claims,
+        public_status_token: publicToken
+      }
 
-      if (insertError) throw insertError
+      const insertResult = await supabase.from('tops_applications').insert([payload])
+
+      // supabase client may return { data, error } or { error } depending on SDK version
+      // normalize to check for an error object and log full result for easier debugging
+      // (this helps surface RLS / auth / DB errors when running on deployed environment)
+      // @ts-ignore
+      const insertError = insertResult?.error || (Array.isArray(insertResult) ? insertResult[1] : null)
+      console.debug('Insert result:', insertResult)
+      if (insertError) {
+        // prefer structured message when available
+        const msg = insertError?.message || JSON.stringify(insertError)
+        throw new Error(msg)
+      }
 
       // Success alert with status-check link
       const statusUrl = `${window.location.origin}/status?token=${publicToken}`

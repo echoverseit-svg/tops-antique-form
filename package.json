@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-  "dev:api": "node ./scripts/dev-api.js",
+    "dev:api": "node ./scripts/dev-api.js",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
@@ -19,7 +19,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.294.0",
-    "nodemailer": "^6.9.7",
+    "nodemailer": "^6.10.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^7.9.5",

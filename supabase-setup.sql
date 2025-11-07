@@ -38,6 +38,10 @@ CREATE TABLE IF NOT EXISTS tops_applications (
   -- V. Community Service Profile (up to 20 claims) - stored as JSONB
   community_service_claims JSONB DEFAULT '[]'::jsonb,
   
+  -- Status and Tracking
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'under_review', 'approved', 'rejected')),
+  public_status_token TEXT UNIQUE,
+  
   -- Data Privacy Confirmation
   data_privacy_accepted BOOLEAN NOT NULL DEFAULT false,
   
@@ -68,6 +72,12 @@ CREATE INDEX IF NOT EXISTS idx_tops_applications_email
 
 CREATE INDEX IF NOT EXISTS idx_tops_applications_municipality 
   ON tops_applications(municipality);
+
+CREATE INDEX IF NOT EXISTS idx_tops_applications_status_token 
+  ON tops_applications(public_status_token);
+
+CREATE INDEX IF NOT EXISTS idx_tops_applications_status 
+  ON tops_applications(status);
 
 -- Create storage bucket for file uploads
 INSERT INTO storage.buckets (id, name, public)

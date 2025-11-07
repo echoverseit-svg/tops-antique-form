@@ -1,10 +1,33 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { Download, FileText, Users, Calendar, Search, Filter, MessageCircle, CheckCircle, AlertCircle, Loader2, Clock } from 'lucide-react'
+import { Download, FileText, Users, Calendar, Search, Filter, MessageCircle, CheckCircle, AlertCircle, Loader2, Clock, Mail } from 'lucide-react'
 import { Application, ApplicationStatus, APPLICATION_STATUS_LABELS } from '../types/admin'
 import ApplicationDetails from '../components/ApplicationDetails'
+import { getStatusEmailSubject, getStatusEmailBody, getStatusEmailPlainText, EmailData } from '../lib/emailTemplates'
+
+// Helper function to extract filename from Supabase storage URL
+const getFileNameFromUrl = (url: string): string => {
+  // Try to extract the filename from the storage URL
+  try {
+    if (!url) return ''
+    const urlObj = new URL(url)
+    const pathParts = urlObj.pathname.split('/')
+    // Get the last part of the path which should be the filename
+    return decodeURIComponent(pathParts[pathParts.length - 1])
+  } catch (e) {
+    // If URL parsing fails, try to get filename from the last part of the path
+    const parts = url.split('/')
+    return parts[parts.length - 1] || ''
+  }
+}
 
 export default function AdminDashboard() {
+  // API base for serverless endpoints. Set VITE_API_BASE_URL during local dev to point to a local API server
+  const API_BASE = (import.meta.env.VITE_API_BASE_URL as string) || ''
+  const apiUrl = (path: string) => {
+    if (!API_BASE) return path
+    return `${API_BASE.replace(/\/$/, '')}/${path.replace(/^\//, '')}`
+  }
   const [applications, setApplications] = useState<Application[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -12,14 +35,20 @@ export default function AdminDashboard() {
   const [filterSchoolLevel, setFilterSchoolLevel] = useState('')
   const [showFiles, setShowFiles] = useState(false)
   const [uploadedFiles, setUploadedFiles] = useState<any[]>([])
+  const [showDataOverview, setShowDataOverview] = useState(false)
+  const [tableCounts, setTableCounts] = useState<any>({})
+  const [storageTotalBytes, setStorageTotalBytes] = useState<number>(0)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [password, setPassword] = useState('')
   const [loginError, setLoginError] = useState('')
   const [showAdminPassword, setShowAdminPassword] = useState(false)
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null)
+  const [showInfoBubble, setShowInfoBubble] = useState(false)
+  const [sendingEmail, setSendingEmail] = useState<string | null>(null) // Track which application is sending email
+  const [emailComments, setEmailComments] = useState<{ [key: string]: string }>({}) // Store comments for each application
 
-  // Admin password - Change this to your desired password
-  const ADMIN_PASSWORD = 'TOPS2025Admin'
+  // Admin password from environment variable
+  const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || 'TOPS2025Admin'
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault()
@@ -45,36 +74,342 @@ export default function AdminDashboard() {
     if (isAuthenticated) {
       fetchApplications()
       fetchUploadedFiles()
+      fetchDataOverview()
     }
   }, [isAuthenticated])
 
   const fetchApplications = async () => {
+    // Try server-backed admin API first, then fall back to client-side supabase if unavailable
     try {
+      const res = await fetch(apiUrl('/api/applications'))
+      if (res.ok) {
+        const json = await res.json()
+        setApplications(json?.data || [])
+        return
+      }
+      console.warn('Admin API responded with', res.status)
+    } catch (err) {
+      console.debug('Admin API not available, falling back to client Supabase:', err)
+    }
+
+    try {
+      // Fallback: attempt to read from Supabase client (may be blocked by RLS if not authorized)
       const { data, error } = await supabase
         .from('tops_applications')
         .select('*')
         .order('created_at', { ascending: false })
 
-      if (error) throw error
-      setApplications(data || [])
-    } catch (error) {
-      console.error('Error fetching applications:', error)
-      alert('Error loading applications. Make sure you are logged in.')
+      if (error) {
+        console.error('Supabase client fetch error:', error)
+        setApplications([])
+      } else {
+        setApplications(data || [])
+      }
+    } catch (err) {
+      console.error('Unexpected error fetching applications via client fallback:', err)
+      setApplications([])
     } finally {
       setLoading(false)
     }
   }
 
   const fetchUploadedFiles = async () => {
+    // Try server-backed files list, else fallback to client storage list
     try {
-      const { data, error } = await supabase.storage
-        .from('tops-uploads')
-        .list()
+      const res = await fetch(apiUrl('/api/files'))
+      if (res.ok) {
+        const json = await res.json()
+        setUploadedFiles(json?.data || [])
+        setStorageTotalBytes(json?.total || 0)
+        return
+      }
+      console.warn('Admin API /files responded with', res.status)
+    } catch (err) {
+      console.debug('Admin API /files not available, falling back to client Supabase:', err)
+    }
 
-      if (error) throw error
+    try {
+      const { data, error } = await supabase.storage.from('tops-uploads').list('', { limit: 1000 })
+      if (error) {
+        console.error('Supabase storage list error:', error)
+        setUploadedFiles([])
+        setStorageTotalBytes(0)
+        return
+      }
       setUploadedFiles(data || [])
-    } catch (error) {
-      console.error('Error fetching files:', error)
+      const total = (data || []).reduce((sum: number, f: any) => {
+        const size = f?.metadata?.size || f?.size || 0
+        return sum + Number(size)
+      }, 0)
+      setStorageTotalBytes(total)
+    } catch (err) {
+      console.error('Unexpected error listing storage via client fallback:', err)
+      setUploadedFiles([])
+      setStorageTotalBytes(0)
+    }
+  }
+
+  
+
+  const fetchDataOverview = async () => {
+    // Try server overview first, fall back to client queries
+    try {
+      const res = await fetch(apiUrl('/api/overview'))
+      if (res.ok) {
+        const json = await res.json()
+        setTableCounts(json?.counts || {})
+        setStorageTotalBytes(json?.storageTotalBytes || 0)
+        if (json?.files) setUploadedFiles(json.files)
+        return
+      }
+      console.warn('Admin API /overview responded with', res.status)
+    } catch (err) {
+      console.debug('Admin API /overview not available, falling back to client Supabase:', err)
+    }
+
+    try {
+      const tables = ['tops_applications', 'application_reviews', 'application_comments', 'achievement_categories', 'reviewers']
+      const counts: any = {}
+      for (const t of tables) {
+        try {
+          const { count, error } = await supabase.from(t).select('id', { count: 'exact', head: true })
+          if (error) {
+            console.warn(`Count error for ${t}:`, error)
+            counts[t] = null
+          } else {
+            counts[t] = count || 0
+          }
+        } catch (e) {
+          console.warn(`Unexpected count failure for ${t}:`, e)
+          counts[t] = null
+        }
+      }
+      setTableCounts(counts)
+
+      // storage total fallback
+      const { data: files } = await supabase.storage.from('tops-uploads').list('', { limit: 1000 })
+  const total = (files || []).reduce((sum, f) => sum + Number(((f as any)?.metadata?.size || (f as any)?.size) || 0), 0)
+      setStorageTotalBytes(total)
+      if (files) setUploadedFiles(files)
+    } catch (err) {
+      console.error('Error fetching data overview via client fallback:', err)
+    }
+  }
+
+  const deleteStorageFile = async (fileName: string) => {
+    try {
+      const confirmed = window.confirm(`Delete file ${fileName}? This action cannot be undone.`)
+      if (!confirmed) return false
+
+      // Try server-side API first if available
+      const apiBase = API_BASE
+      if (apiBase) {
+        try {
+          const res = await fetch(apiUrl('/api/delete-file'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fileName })
+          })
+          if (res.ok) {
+            await fetchUploadedFiles()
+            await fetchDataOverview()
+            return true
+          }
+          console.warn('API delete failed, falling back to client')
+        } catch (e) {
+          console.warn('API not available, using client fallback')
+        }
+      }
+
+      // Fallback: Delete directly via Supabase client
+      const { error } = await supabase.storage
+        .from('tops-uploads')
+        .remove([fileName])
+
+      if (error) {
+        console.error('Supabase storage delete error:', error)
+        alert('Failed to delete file: ' + error.message)
+        return false
+      }
+
+      await fetchUploadedFiles()
+      await fetchDataOverview()
+      alert('File deleted successfully')
+      return true
+    } catch (err) {
+      console.error('Error deleting file:', err)
+      alert('Failed to delete file. See console for details.')
+      return false
+    }
+  }
+
+  const deleteApplication = async (app: Application) => {
+    try {
+      const confirmed = window.confirm(`Delete application for ${app.full_name}? This will remove the application and all associated files.`)
+      if (!confirmed) return
+
+      // Collect all file URLs from the application
+      const filesToDelete = new Set<string>()
+
+      // Add required document files
+      if (app.nomination_letter_url) filesToDelete.add(getFileNameFromUrl(app.nomination_letter_url))
+      if (app.academic_records_url) filesToDelete.add(getFileNameFromUrl(app.academic_records_url))
+      if (app.certificate_truthfulness_url) filesToDelete.add(getFileNameFromUrl(app.certificate_truthfulness_url))
+      if (app.photo_2x2_url) filesToDelete.add(getFileNameFromUrl(app.photo_2x2_url))
+
+      // Add files from academic claims
+      const academicClaims = typeof app.academic_claims === 'string' 
+        ? JSON.parse(app.academic_claims) 
+        : (app.academic_claims || [])
+      academicClaims.forEach((claim: any) => {
+        if (claim.file_url) filesToDelete.add(getFileNameFromUrl(claim.file_url))
+      })
+
+      // Add files from leadership claims
+      const leadershipClaims = typeof app.leadership_claims === 'string'
+        ? JSON.parse(app.leadership_claims)
+        : (app.leadership_claims || [])
+      leadershipClaims.forEach((claim: any) => {
+        if (claim.file_url) filesToDelete.add(getFileNameFromUrl(claim.file_url))
+      })
+
+      // Add files from community service claims
+      const communityClaims = typeof app.community_service_claims === 'string'
+        ? JSON.parse(app.community_service_claims)
+        : (app.community_service_claims || [])
+      communityClaims.forEach((claim: any) => {
+        if (claim.file_url) filesToDelete.add(getFileNameFromUrl(claim.file_url))
+      })
+
+      // Delete all associated files first
+      for (const fileName of filesToDelete) {
+        try {
+          await deleteStorageFile(fileName)
+        } catch (e) {
+          console.warn(`Failed to delete file ${fileName}:`, e)
+          // Continue with other files even if one fails
+        }
+      }
+
+      // Then delete the application from the database
+      // Try server-side API first if available
+      if (API_BASE) {
+        try {
+          const res = await fetch(apiUrl('/api/delete-application'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: app.id })
+          })
+
+          if (res.ok) {
+            await fetchApplications()
+            await fetchUploadedFiles()
+            await fetchDataOverview()
+            alert(`Application and ${filesToDelete.size} associated files deleted successfully`)
+            return
+          }
+          console.warn('API delete failed, falling back to client')
+        } catch (e) {
+          console.warn('API not available, using client fallback')
+        }
+      }
+
+      // Fallback: Delete directly via Supabase client
+      const { error: deleteError } = await supabase
+        .from('tops_applications')
+        .delete()
+        .eq('id', app.id)
+
+      if (deleteError) {
+        console.error('Supabase delete error:', deleteError)
+        throw new Error('Failed to delete application: ' + deleteError.message)
+      }
+
+      await fetchApplications()
+      await fetchUploadedFiles()
+      await fetchDataOverview()
+      alert(`Application and ${filesToDelete.size} associated files deleted successfully`)
+    } catch (err: any) {
+      console.error('Error deleting application:', err)
+      alert('Failed to delete application: ' + (err.message || 'See console for details'))
+    }
+  }
+
+  // Update application status
+  const updateApplicationStatus = async (appId: string, newStatus: ApplicationStatus) => {
+    try {
+      const { error } = await supabase
+        .from('tops_applications')
+        .update({ status: newStatus, updated_at: new Date().toISOString() })
+        .eq('id', appId)
+
+      if (error) {
+        console.error('Error updating status:', error)
+        alert('Failed to update status: ' + error.message)
+        return false
+      }
+
+      // Refresh applications list
+      await fetchApplications()
+      return true
+    } catch (err: any) {
+      console.error('Error updating status:', err)
+      alert('Failed to update status: ' + err.message)
+      return false
+    }
+  }
+
+  // Send status notification email
+  const sendStatusEmail = async (app: Application, comments?: string) => {
+    if (!app.email || !app.public_status_token) {
+      alert('Cannot send email: Missing email address or status token')
+      return
+    }
+
+    setSendingEmail(app.id)
+
+    try {
+      const emailData: EmailData = {
+        applicantName: app.full_name,
+        applicantEmail: app.email,
+        statusToken: app.public_status_token,
+        status: app.status || 'pending',
+        comments: comments
+      }
+
+      const subject = getStatusEmailSubject(emailData.status)
+      const html = getStatusEmailBody(emailData)
+      const text = getStatusEmailPlainText(emailData)
+
+      // Use Vercel serverless function (works in web dashboard!)
+      const apiUrl = '/api/send-email'
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ to: app.email, subject, html, text })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || 'Failed to send email')
+      }
+
+      alert(`✅ Email sent successfully to ${app.email}!`)
+      
+      // Clear the comment field for this application
+      setEmailComments(prev => {
+        const updated = { ...prev }
+        delete updated[app.id]
+        return updated
+      })
+
+    } catch (err: any) {
+      console.error('Error sending email:', err)
+      alert(`Failed to send email: ${err.message}\n\nPlease check:\n1. Deployed to Vercel\n2. Set GMAIL_USER in Vercel environment variables\n3. Set GMAIL_APP_PASSWORD in Vercel environment variables`)
+    } finally {
+      setSendingEmail(null)
     }
   }
 
@@ -520,15 +855,25 @@ export default function AdminDashboard() {
                 </div>
               </div>
               <div className="text-right flex flex-col items-end gap-3">
-                <button
-                  onClick={() => {
-                    sessionStorage.removeItem('admin_authenticated')
-                    setIsAuthenticated(false)
-                  }}
-                  className="px-4 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-lg transition-all duration-200 text-sm font-medium flex items-center gap-2"
-                >
-                  <span>🚪</span> Logout
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setShowInfoBubble(!showInfoBubble)}
+                    title="Show information"
+                    className="px-3 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-lg transition-all duration-200 text-sm font-medium flex items-center gap-2"
+                  >
+                    <span>ℹ️</span>
+                    <span className="sr-only">Info</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      sessionStorage.removeItem('admin_authenticated')
+                      setIsAuthenticated(false)
+                    }}
+                    className="px-4 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-lg transition-all duration-200 text-sm font-medium flex items-center gap-2"
+                  >
+                    <span>🚪</span> Logout
+                  </button>
+                </div>
                 <div className="bg-white/20 backdrop-blur-sm rounded-xl px-6 py-3">
                   <p className="text-4xl font-bold">{applications.length}</p>
                   <p className="text-sm text-amber-100">Total Applications</p>
@@ -573,9 +918,89 @@ export default function AdminDashboard() {
                 <FileText className="w-4 h-4" />
                 {showFiles ? 'Hide' : 'View'} Files ({uploadedFiles.length})
               </button>
+              <button
+                onClick={() => { setShowDataOverview(!showDataOverview); if (!showDataOverview) fetchDataOverview() }}
+                className="flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white px-5 py-2.5 rounded-xl transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:scale-105"
+              >
+                <Users className="w-4 h-4" />
+                {showDataOverview ? 'Hide' : 'Show'} Data Overview
+              </button>
             </div>
           </div>
+          {/* Info bubble/panel is rendered below header to avoid being clipped by header overflow */}
         </div>
+
+        {/* Info bubble/panel */}
+        {showInfoBubble && (
+          <div className="mb-6 bg-white rounded-xl shadow-lg p-6 border border-gray-200 animate-fade-in">
+            <div className="flex items-start justify-between mb-4">
+              <h4 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <span>ℹ️</span> Admin Dashboard Information
+              </h4>
+              <button 
+                onClick={() => setShowInfoBubble(false)} 
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              {/* Features */}
+              <div>
+                <p className="font-semibold text-sm text-gray-700 mb-2">📋 Features</p>
+                <ul className="list-disc pl-5 space-y-1 text-sm text-gray-600">
+                  <li>View and filter submitted applications</li>
+                  <li>Download CSV / JSON reports with all data</li>
+                  <li>Export expanded CSV with all claims</li>
+                  <li>Delete applications and associated files</li>
+                  <li>View uploaded files and identify their owner</li>
+                </ul>
+              </div>
+
+              {/* Delete Operations */}
+              <div className="p-3 bg-green-50 border-l-4 border-green-500 rounded">
+                <p className="text-sm font-semibold text-green-800 mb-1">✅ Delete Operations Now Work!</p>
+                <p className="text-xs text-gray-700">
+                  Delete functionality has been enabled with fallback support. It works in both development and production:
+                </p>
+                <ul className="list-disc pl-5 mt-2 text-xs text-gray-700 space-y-1">
+                  <li><strong>Development:</strong> Uses direct Supabase client calls</li>
+                  <li><strong>Production:</strong> Automatically uses server-side API if available</li>
+                  <li><strong>Files:</strong> Deletes all associated files when deleting applications</li>
+                </ul>
+              </div>
+
+              {/* Security Warning */}
+              <div className="p-3 bg-yellow-50 border-l-4 border-yellow-400 rounded">
+                <p className="text-sm font-semibold text-yellow-800 mb-1">⚠️ Security Notice</p>
+                <p className="text-xs text-gray-700">
+                  Current setup allows public deletes (development only). Before production:
+                </p>
+                <ul className="list-disc pl-5 mt-2 text-xs text-gray-700 space-y-1">
+                  <li>Review <code className="bg-white px-1 py-0.5 rounded">PRODUCTION_SECURITY_NOTES.md</code></li>
+                  <li>Implement Supabase Auth or use server-side API</li>
+                  <li>Change default passwords in <code className="bg-white px-1 py-0.5 rounded">.env</code></li>
+                </ul>
+              </div>
+
+              {/* Data Overview */}
+              <div>
+                <p className="font-semibold text-sm text-gray-700 mb-2">📊 Current Stats</p>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="p-2 bg-gray-50 rounded">
+                    <p className="text-gray-500">Applications</p>
+                    <p className="text-lg font-bold text-gray-800">{applications.length}</p>
+                  </div>
+                  <div className="p-2 bg-gray-50 rounded">
+                    <p className="text-gray-500">Uploaded Files</p>
+                    <p className="text-lg font-bold text-gray-800">{uploadedFiles.length}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Filters */}
         <div className="bg-white rounded-2xl shadow-xl p-6 mb-8 border border-gray-100">
@@ -699,6 +1124,15 @@ export default function AdminDashboard() {
                       >
                         Download
                       </a>
+                      <button
+                        onClick={async () => {
+                          const ok = await deleteStorageFile(file.name)
+                          if (ok) alert('File deleted')
+                        }}
+                        className="flex-1 text-center bg-red-600 text-white text-xs px-3 py-2 rounded hover:bg-red-700 transition-colors"
+                      >
+                        Delete
+                      </button>
                     </div>
                   </div>
                 )
@@ -707,6 +1141,67 @@ export default function AdminDashboard() {
             {uploadedFiles.length === 0 && (
               <p className="text-center text-gray-500 py-8">No files uploaded yet</p>
             )}
+          </div>
+        )}
+
+        {/* Data Overview */}
+        {showDataOverview && (
+          <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <Users className="w-5 h-5 text-orange-600" />
+              Data Overview
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <div className="p-4 border rounded">
+                <p className="text-sm text-gray-500">Total Applications</p>
+                <p className="text-2xl font-bold">{tableCounts.tops_applications ?? '-'}</p>
+              </div>
+              <div className="p-4 border rounded">
+                <p className="text-sm text-gray-500">Total Reviews</p>
+                <p className="text-2xl font-bold">{tableCounts.application_reviews ?? '-'}</p>
+              </div>
+              <div className="p-4 border rounded">
+                <p className="text-sm text-gray-500">Total Comments</p>
+                <p className="text-2xl font-bold">{tableCounts.application_comments ?? '-'}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <div className="p-4 border rounded">
+                <p className="text-sm text-gray-500">Achievement Categories</p>
+                <p className="text-2xl font-bold">{tableCounts.achievement_categories ?? '-'}</p>
+              </div>
+              <div className="p-4 border rounded">
+                <p className="text-sm text-gray-500">Reviewers</p>
+                <p className="text-2xl font-bold">{tableCounts.reviewers ?? '-'}</p>
+              </div>
+              <div className="p-4 border rounded">
+                <p className="text-sm text-gray-500">Storage Used</p>
+                <p className="text-2xl font-bold">{(storageTotalBytes/1024/1024).toFixed(2)} MB</p>
+                <p className="text-xs text-gray-500">Files: {uploadedFiles.length}</p>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="text-sm font-semibold mb-2">Largest files</h4>
+              <div className="space-y-2">
+                {uploadedFiles
+                  .slice()
+                  .sort((a,b) => (b?.metadata?.size || b?.size || 0) - (a?.metadata?.size || a?.size || 0))
+                  .slice(0,6)
+                  .map(f => (
+                    <div key={f.name} className="flex items-center justify-between border p-2 rounded">
+                      <div>
+                        <div className="text-sm font-medium">{f.name}</div>
+                        <div className="text-xs text-gray-500">{new Date(f.created_at).toLocaleString()}</div>
+                      </div>
+                      <div className="text-sm text-gray-700">{(((f?.metadata?.size || f?.size || 0)/1024)/1024).toFixed(2)} MB</div>
+                    </div>
+                  ))}
+                {uploadedFiles.length === 0 && <div className="text-sm text-gray-500">No files uploaded</div>}
+              </div>
+            </div>
           </div>
         )}
 
@@ -832,14 +1327,17 @@ export default function AdminDashboard() {
                         {new Date(app.created_at).toLocaleTimeString()}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-center space-x-2">
-                      <button
-                        onClick={() => setSelectedApplication(app)}
-                        className="bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700 transition-colors text-sm font-medium inline-flex items-center gap-1"
-                      >
-                        <MessageCircle className="w-4 h-4" />
-                        Review
-                      </button>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-col gap-2">
+                        {/* Action buttons row */}
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setSelectedApplication(app)}
+                            className="bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700 transition-colors text-sm font-medium inline-flex items-center gap-1"
+                          >
+                            <MessageCircle className="w-4 h-4" />
+                            Review
+                          </button>
                       <button
                         onClick={() => {
                           // Create individual CSV for this applicant
@@ -951,6 +1449,58 @@ export default function AdminDashboard() {
                       >
                         Download
                       </button>
+                          <button
+                            onClick={() => deleteApplication(app)}
+                            className="bg-red-600 text-white px-3 py-1.5 rounded hover:bg-red-700 transition-colors text-sm font-medium"
+                          >
+                            Delete
+                          </button>
+                        </div>
+
+                        {/* Status Update Section */}
+                        <div className="pt-2 border-t border-gray-200">
+                          <div className="flex items-center gap-2 mb-2">
+                            <select
+                              value={app.status || 'pending'}
+                              onChange={(e) => updateApplicationStatus(app.id, e.target.value as ApplicationStatus)}
+                              className="text-xs px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-amber-500"
+                            >
+                              <option value="pending">Pending</option>
+                              <option value="under_review">Under Review</option>
+                              <option value="approved">Approved</option>
+                              <option value="rejected">Rejected</option>
+                            </select>
+                          </div>
+                          
+                          {/* Email Comments Input */}
+                          <textarea
+                            placeholder="Add comments for email..."
+                            value={emailComments[app.id] || ''}
+                            onChange={(e) => setEmailComments(prev => ({ ...prev, [app.id]: e.target.value }))}
+                            className="w-full text-xs px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-amber-500 mb-1"
+                            rows={2}
+                          />
+                          
+                          {/* Send Email Button */}
+                          <button
+                            onClick={() => sendStatusEmail(app, emailComments[app.id])}
+                            disabled={sendingEmail === app.id || !app.email}
+                            className="w-full bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700 transition-colors text-xs font-medium inline-flex items-center justify-center gap-1 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                          >
+                            {sendingEmail === app.id ? (
+                              <>
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                                Sending...
+                              </>
+                            ) : (
+                              <>
+                                <Mail className="w-3 h-3" />
+                                Email Status to {app.email?.split('@')[0]}
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
                     </td>
                   </tr>
                 ))}

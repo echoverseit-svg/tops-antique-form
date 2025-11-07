@@ -14,8 +14,8 @@ function App() {
     const [showCode, setShowCode] = useState(false)
   const [accessError, setAccessError] = useState('')
 
-  // Access code - Change this to your desired code
-  const VALID_ACCESS_CODE = 'TOPS2025'
+  // Access code from environment variable
+  const VALID_ACCESS_CODE = import.meta.env.VITE_ACCESS_CODE || 'TOPS2025'
 
   const handleAccessSubmit = (e: React.FormEvent) => {
     e.preventDefault()

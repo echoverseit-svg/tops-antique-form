@@ -76,6 +76,27 @@ export const SCHOOL_LEVELS = [
 
 export const SEX_OPTIONS = ['Male', 'Female']
 
+export const ANTIQUE_MUNICIPALITIES = [
+  'Anini-y',
+  'Barbaza',
+  'Belison',
+  'Bugasong',
+  'Caluya',
+  'Culasi',
+  'Hamtic',
+  'Laua-an',
+  'Libertad',
+  'Pandan',
+  'Patnongon',
+  'San Jose',
+  'San Remigio',
+  'Sebaste',
+  'Sibalom',
+  'Tibiao',
+  'Tobias Fornier',
+  'Valderrama'
+]
+
 export const ACADEMIC_PARTICIPATION_TYPES = [
   'Contestant',
   'Participant',
@@ -121,8 +142,7 @@ export const LEADERSHIP_RANKS = [
   'Managing Editor/Business Manager',
   '1st PLACE/RECIPIENT',
   '2nd PLACE/RECIPIENT',
-  '3rd PLACE/RECIPIENT',
-  'More...'
+  '3rd PLACE/RECIPIENT'
 ]
 
 export const LEADERSHIP_LEVELS = [

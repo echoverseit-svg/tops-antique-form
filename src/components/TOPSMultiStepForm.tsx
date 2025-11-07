@@ -1,4 +1,4 @@
-import { useState, FormEvent } from 'react'
+import { useState, FormEvent, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { TOPSFormData } from '../types'
 import { Loader2, Send, ChevronLeft, ChevronRight } from 'lucide-react'
@@ -22,6 +22,32 @@ export default function TOPSMultiStepForm({ onSuccess }: TOPSMultiStepFormProps)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [uploadingFile, setUploadingFile] = useState(false)
+  const [tempUploadedFiles, setTempUploadedFiles] = useState<string[]>([])
+
+  // Cleanup temporary files when component unmounts or page is closed/refreshed
+  useEffect(() => {
+    const cleanup = async () => {
+      for (const filePath of tempUploadedFiles) {
+        try {
+          const fileName = filePath.split('/').pop() // Get filename from URL
+          if (fileName) {
+            await supabase.storage.from('tops-uploads').remove([fileName])
+          }
+        } catch (err) {
+          console.error('Error cleaning up file:', err)
+        }
+      }
+    }
+
+    // Add cleanup for page unload
+    window.addEventListener('beforeunload', cleanup)
+    
+    // Cleanup on component unmount
+    return () => {
+      window.removeEventListener('beforeunload', cleanup)
+      cleanup()
+    }
+  }, [tempUploadedFiles])
 
   const [formData, setFormData] = useState<TOPSFormData>({
     full_name: '',
@@ -62,6 +88,20 @@ export default function TOPSMultiStepForm({ onSuccess }: TOPSMultiStepFormProps)
   const handleFileUpload = async (file: File, fieldName: string) => {
     if (!file) return
 
+    // File size validation (5MB limit)
+    const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
+    if (file.size > MAX_FILE_SIZE) {
+      setError(`File "${file.name}" is too large. Maximum file size is 5MB.`)
+      return
+    }
+
+    // File type validation
+    const ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png']
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      setError(`File type "${file.type}" is not allowed. Please upload PDF, JPG, or PNG files only.`)
+      return
+    }
+
     setUploadingFile(true)
     setError(null)
 
@@ -69,6 +109,16 @@ export default function TOPSMultiStepForm({ onSuccess }: TOPSMultiStepFormProps)
       const fileExt = file.name.split('.').pop()
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
       const filePath = `${fileName}`
+
+      // Remove previous file for this field if exists
+      const previousUrl = formData[fieldName as keyof TOPSFormData] as string
+      if (previousUrl) {
+        const previousFileName = previousUrl.split('/').pop()
+        if (previousFileName) {
+          await supabase.storage.from('tops-uploads').remove([previousFileName])
+          setTempUploadedFiles(files => files.filter(f => !f.includes(previousFileName)))
+        }
+      }
 
       const { error: uploadError } = await supabase.storage
         .from('tops-uploads')
@@ -79,6 +129,9 @@ export default function TOPSMultiStepForm({ onSuccess }: TOPSMultiStepFormProps)
       const { data: { publicUrl } } = supabase.storage
         .from('tops-uploads')
         .getPublicUrl(filePath)
+
+      // Add to temp uploads tracking
+      setTempUploadedFiles(files => [...files, publicUrl])
 
       setFormData(prev => ({
         ...prev,
@@ -95,6 +148,20 @@ export default function TOPSMultiStepForm({ onSuccess }: TOPSMultiStepFormProps)
   const handleClaimFileUpload = async (file: File, claimType: 'academic' | 'leadership' | 'community') => {
     if (!file) return null
 
+    // File size validation (5MB limit)
+    const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
+    if (file.size > MAX_FILE_SIZE) {
+      setError(`File "${file.name}" is too large. Maximum file size is 5MB.`)
+      return null
+    }
+
+    // File type validation
+    const ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png']
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      setError(`File type "${file.type}" is not allowed. Please upload PDF, JPG, or PNG files only.`)
+      return null
+    }
+
     setUploadingFile(true)
     try {
       const fileExt = file.name.split('.').pop()
@@ -110,6 +177,9 @@ export default function TOPSMultiStepForm({ onSuccess }: TOPSMultiStepFormProps)
       const { data: { publicUrl } } = supabase.storage
         .from('tops-uploads')
         .getPublicUrl(filePath)
+
+      // Add to temp uploads tracking
+      setTempUploadedFiles(files => [...files, publicUrl])
 
       return publicUrl
     } catch (err) {
@@ -145,22 +215,45 @@ export default function TOPSMultiStepForm({ onSuccess }: TOPSMultiStepFormProps)
     setError(null)
 
     try {
-      // generate a public token so the applicant can check status later
-      const publicToken = (typeof crypto !== 'undefined' && (crypto as any).randomUUID)
-        ? (crypto as any).randomUUID()
-        : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+      // Generate a shorter, user-friendly public token (12 characters)
+      // Format: XXXX-XXXX-XXXX (easier to read and share)
+      const generateToken = () => {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789' // Removed similar chars (I,O,0,1)
+        const segments = 3
+        const segmentLength = 4
+        
+        return Array.from({ length: segments }, () => 
+          Array.from({ length: segmentLength }, () => 
+            chars[Math.floor(Math.random() * chars.length)]
+          ).join('')
+        ).join('-')
+      }
+      
+      const publicToken = generateToken()
 
-      const { error: insertError } = await supabase
+      // Ensure JSON/JSONB columns are passed as native arrays/objects (not stringified)
+      const payload = {
+        ...formData,
+        academic_claims: formData.academic_claims,
+        leadership_claims: formData.leadership_claims,
+        community_service_claims: formData.community_service_claims,
+        public_status_token: publicToken
+      }
+
+      const { data: insertData, error: insertError } = await supabase
         .from('tops_applications')
-        .insert([{
-          ...formData,
-          academic_claims: JSON.stringify(formData.academic_claims),
-          leadership_claims: JSON.stringify(formData.leadership_claims),
-          community_service_claims: JSON.stringify(formData.community_service_claims),
-          public_status_token: publicToken
-        }])
+        .insert([payload])
+        .select()
 
-      if (insertError) throw insertError
+      console.debug('Insert result:', { data: insertData, error: insertError })
+      
+      if (insertError) {
+        const msg = insertError?.message || 'Failed to submit application'
+        throw new Error(msg)
+      }
+
+      // Clear temporary files tracking since they're now permanent
+      setTempUploadedFiles([])
 
       // Success alert with status-check link
       const statusUrl = `${window.location.origin}/status?token=${publicToken}`

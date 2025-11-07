@@ -1,5 +1,5 @@
 import { User } from 'lucide-react'
-import { TOPSFormData } from '../../types'
+import { TOPSFormData, ANTIQUE_MUNICIPALITIES, SEX_OPTIONS } from '../../types'
 
 interface GeneralInfoSectionProps {
   formData: TOPSFormData
@@ -49,14 +49,19 @@ export default function GeneralInfoSection({ formData, setFormData }: GeneralInf
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Municipality: *
           </label>
-          <textarea
+          <select
             required
-            rows={3}
             value={formData.municipality}
             onChange={(e) => setFormData({...formData, municipality: e.target.value})}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-            placeholder="Long answer text"
-          />
+          >
+            <option value="">Select Municipality</option>
+            {ANTIQUE_MUNICIPALITIES.map((municipality) => (
+              <option key={municipality} value={municipality}>
+                {municipality}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div>
@@ -116,14 +121,19 @@ export default function GeneralInfoSection({ formData, setFormData }: GeneralInf
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Sex: *
           </label>
-          <input
-            type="text"
+          <select
             required
             value={formData.sex}
             onChange={(e) => setFormData({...formData, sex: e.target.value})}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-            placeholder="Short answer text"
-          />
+          >
+            <option value="">Select</option>
+            {SEX_OPTIONS.map((sex) => (
+              <option key={sex} value={sex}>
+                {sex}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
     </div>

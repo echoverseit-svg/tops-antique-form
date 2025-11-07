@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { supabase } from '../lib/supabase'
 
 export default function StatusPage() {
   const [token, setToken] = useState('')
@@ -13,34 +14,59 @@ export default function StatusPage() {
     setData(null)
 
     try {
-      // Determine API base (allow overriding via Vite env if server is remote)
+      // Try server-side API first if available
       const apiBase = (import.meta.env && import.meta.env.VITE_STATUS_API_URL) ? import.meta.env.VITE_STATUS_API_URL : ''
-      const base = apiBase.replace(/\/$/, '')
-      const url = `${base}/api/status?token=${encodeURIComponent(token)}`
-
-      // Call your server-side endpoint that uses the service role key to fetch the application by token
-      const res = await fetch(url)
-
-      // If the server returned HTML (eg. a 404 page or index.html), res.json() will fail with 'Unexpected token <'.
-      // Check content-type first and provide a clearer error message.
-      const contentType = res.headers.get('content-type') || ''
-
-      if (!res.ok) {
-        const txt = await res.text()
-        throw new Error(`Request failed (${res.status}) - server response: ${txt.slice(0,200)}`)
+      
+      if (apiBase) {
+        // Use server-side API (production/deployed)
+        const base = apiBase.replace(/\/$/, '')
+        const url = `${base}/api/status?token=${encodeURIComponent(token)}`
+        const res = await fetch(url)
+        
+        if (res.ok) {
+          const json = await res.json()
+          setData(json)
+          return
+        }
       }
-
-      if (!contentType.includes('application/json')) {
-        const txt = await res.text()
-        throw new Error(`Expected JSON but received: ${txt.slice(0,200)}`)
+      
+      // Fallback: Query Supabase directly (works in development)
+      const { data: apps, error: appError } = await supabase
+        .from('tops_applications')
+        .select('id, full_name, email, municipality, status, created_at')
+        .eq('public_status_token', token)
+        .limit(1)
+      
+      if (appError) {
+        throw new Error('Database error: ' + appError.message)
       }
-
-      const json = await res.json()
-      setData(json)
+      
+      if (!apps || apps.length === 0) {
+        throw new Error('No application found with this token. Please check your token and try again.')
+      }
+      
+      const appRow = apps[0]
+      
+      // Fetch public comments if the table exists
+      let comments: any[] = []
+      try {
+        const { data: commentsData } = await supabase
+          .from('application_comments')
+          .select('id, comment_text, created_at')
+          .eq('application_id', appRow.id)
+          .eq('is_internal', false)
+          .order('created_at', { ascending: true })
+        
+        comments = commentsData || []
+      } catch (e) {
+        // Comments table might not exist, that's okay
+        console.log('Comments table not available')
+      }
+      
+      setData({ ...appRow, comments })
     } catch (err: any) {
-      // Provide a friendly message and hint to common causes
       const msg = err?.message || 'Error fetching status'
-      setError(msg + '\n\nHint: make sure the server endpoint `/api/status` is running and reachable. If the endpoint is remote, set VITE_STATUS_API_URL to its base URL in your .env and restart the dev server.')
+      setError(msg)
     } finally {
       setLoading(false)
     }
